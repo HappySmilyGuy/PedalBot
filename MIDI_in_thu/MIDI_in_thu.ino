@@ -12,6 +12,7 @@ const int DIR = 53; // Easy driver direction pin
 const int STEP = 2; // Easy driver step pin
 const int SLP = 52; // Easy Driver sleep pin
 const int LED = 13; // Arduino LED (L) control
+const int CLEAR_ALL = 39; // reset button press
 
 // --------- Global Variables --------- //
 
@@ -31,13 +32,28 @@ void setup(){
   pinMode(DIR, OUTPUT);     
   pinMode(STEP, OUTPUT);
   pinMode(SLP, OUTPUT);
+  pinMode(CLEAR_ALL, INPUT);
   digitalWrite(DIR, HIGH);
   digitalWrite(STEP, LOW);
   digitalWrite(SLP, HIGH); 
 }
 
 void loop(){
-  MIDI.read();  
+  MIDI.read();
+  if(digitalRead(CLEAR_ALL) == HIGH){
+    delay(2000);
+    if(digitalRead(CLEAR_ALL) == HIGH){
+      delay(2000);
+      if(digitalRead(CLEAR_ALL) == HIGH){
+        delay(2000);
+        if(digitalRead(CLEAR_ALL) == HIGH){
+          digitalWrite(LED, HIGH);
+          delay(1000);
+          digitalWrite(LED,LOW);
+        }
+      }
+    }
+  }
 }
 
 

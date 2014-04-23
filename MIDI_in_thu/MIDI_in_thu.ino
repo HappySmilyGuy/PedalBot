@@ -4,8 +4,8 @@
 const boolean DEBUG = false; // false to remove all printouts and LED flashes
 const int STEPDELAY = 200;   // delay between each step in micro seconds
 const float SPR = 1600.0;    // steps per complete rotation of the stepper motor
-const int CW = LOW;              // clockwize, for DIR pin
-const int ACW = HIGH;            // anticlockwise, for DIR pin
+const int CW = LOW;          // clockwize, for DIR pin
+const int ACW = HIGH;        // anticlockwise, for DIR pin
 
 // --------- PINS --------- //
 const int DIR = 53; // Easy driver direction pin
@@ -40,7 +40,7 @@ void setup(){
 
 void loop(){
   MIDI.read();
-  if(digitalRead(CLEAR_ALL) == HIGH){
+  if(digitalRead(CLEAR_ALL) == HIGH){ // lots of delayed checks so it doesn't go off accidentily
     delay(2000);
     if(digitalRead(CLEAR_ALL) == HIGH){
       delay(2000);

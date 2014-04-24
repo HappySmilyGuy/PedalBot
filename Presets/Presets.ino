@@ -47,7 +47,7 @@ int moveToPreset(int motor, int preset){
 void loadPresets(){
   for(int motor = 0; motor < MAX_MOTORS; motor++){
     for(int preset = 0; preset < MAX_PRESETS + 1; preset++){
-      preset[motor][preset] = EEPROM.read(presetMemoryLocation(motor, preset));
+      presets[motor][preset] = EEPROM.read(presetMemoryLocation(motor, preset));
     }
     currentPositions[motor] = EEPROM.read(currentLocationMemoryLocation(motor));
   }

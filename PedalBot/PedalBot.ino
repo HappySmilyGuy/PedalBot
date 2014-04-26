@@ -40,7 +40,7 @@ void setup(){
   // MIDI initialising
   MIDI.begin(MIDI_CHANNEL_OMNI);  // listen for MIDI on all channels at all frequencies
   MIDI.setHandleProgramChange(ChangePreset);
-  // MIDI.turnThruOn();  
+  MIDI.turnThruOff();  // using hardware thru
 
 }
 
@@ -49,11 +49,11 @@ void loop(){
   
   MIDI.read();
   
-  if(digitalRead(CLEAR_ALL) == HIGH) checkClearPresetsButton();
+  //if(digitalRead(CLEAR_ALL) == HIGH) checkClearPresetsButton();
   
-  for(int motor = 0; motor < MAX_MOTORS; motor++){
-    if(digitalRead(savePresetPins[motor]) == HIGH) checkSavePresetButton(motor);
-  }
+ // for(int motor = 0; motor < MAX_MOTORS; motor++){
+  //  if(digitalRead(savePresetPins[motor]) == HIGH) checkSavePresetButton(motor);
+ // }
   
 }
 
@@ -62,9 +62,17 @@ void loop(){
 // --------- MIDI FUNCTIONS --------- //
 void ChangePreset(byte channel, byte number) {
   
-  for(int motor; motor < MAX_MOTORS; motor++){
-    //stepperMotors[motor].moveToPreset(number);
+  for(int i = 0; i < number; i++){
+        digitalWrite(LED, HIGH);
+        delay(300);
+        digitalWrite(LED, LOW);
+        delay(1000);
   }
+  
+ // for(int motor = 0; motor < MAX_MOTORS; motor++){
+int    motor = 0;
+    stepperMotors[motor].moveToPreset(number);
+ // }
   
   currentPreset = number;
   

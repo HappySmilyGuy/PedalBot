@@ -26,7 +26,7 @@ class StepperMotor{
   public:  
     StepperMotor(const byte motorNo, const int encodorSPR, const int motorSPR);
     ~StepperMotor();
-    void drive(const int angle, const byte dir);
+    void drive(int angle, const byte dir);
     void moveToPreset(const byte preset);
     void savePreset(const byte currentPreset);
     void clearPresets();

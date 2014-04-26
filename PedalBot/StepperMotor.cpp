@@ -34,7 +34,7 @@ int encoderStepsPerRotation;
 
 byte number;
 // from dirPin to number would be consts but it causes huge amounts of errors, because the arduino can not
-// specify when the declri
+// specify when the constructor is called, so the compiler doesn't like using initialization lists for constants.
 
 byte currentPosition;
 byte presets[MAX_PRESETS];
@@ -66,11 +66,14 @@ StepperMotor::StepperMotor(const byte motorNo, const int encodorSPR, const int m
   pinMode(sleepPin, OUTPUT);
   pinMode(encodorPinA, INPUT);
   pinMode(encodorPinB, INPUT);
+  pinMode(13, OUTPUT);
   
   // initialise output pins
   digitalWrite(dirPin, CW);
   digitalWrite(stepPin, LOW);
   digitalWrite(sleepPin, LOW);
+  
+  currentPosition = NOON;
   
   loadPresets();
   
@@ -83,12 +86,23 @@ StepperMotor::~StepperMotor(){
 }
 
 
-void StepperMotor::drive(const int angle, const byte dir){ //update to include rotary encodor
-
+void StepperMotor::drive(int angle, const byte dir){ //update to include rotary encodor
+  angle = 360; // REMOVE
+  
+  //checks done: motorStepsPerRotation == 1600.0, 
+  
+// THE PROBLEM IS (rotate !> 0)!!
+  
   digitalWrite(sleepPin, HIGH);
   float rotate = (float) (angle * motorStepsPerRotation) / 360.0; // to avoid rounding error
   
-  for(int i = 0; i < rotate; i++){
+  if(rotate > 0){
+    digitalWrite(13, HIGH);
+    delay(2000);
+    digitalWrite(13, LOW);
+  }
+  
+  for(int i = 0; i < rotate*2; i++){ //* 2 here to turn far enough <<<WARNING
       digitalWrite(stepPin, HIGH);
       delayMicroseconds(STEPDELAY);
       digitalWrite(stepPin, LOW);
@@ -106,12 +120,18 @@ void StepperMotor::moveToPreset(const byte preset){
   
   int pos = presets[preset];
   
-  if(pos != UNSET){
-    int angle = pos - currentPosition;
-    if(angle < 0) drive(angle, CW);
-    else if(angle > 0) drive(-1*angle, ACW);
+  //if(pos != UNSET){ // if the preset has been set
+
+    //int angle = pos - currentPosition;
+    int angle = 180;
+    if(angle < 0){
+      drive(angle, CW);
+    }else if(angle > 0){
+      drive(-1*angle, ACW);
+    }
+    
     currentPosition = pos;
-  }
+  //}
   
 }
 
@@ -173,12 +193,14 @@ inline int currentLocationMemoryLocation(){
 // ----- INITIALISERS
 void StepperMotor::loadPresets(){
   
-    for(int preset = 0; preset < MAX_PRESETS + 1; preset++){
+    for(int preset = 0; preset < MAX_PRESETS; preset++){
       presets[preset] = EEPROM.read(presetMemoryLocation(preset));
     }
     
     currentPosition = EEPROM.read(currentLocationMemoryLocation());
     
+    for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = random(0,254); //for display, remove and reset chip.
+    currentPosition = 255; // also remove  
 }
 
 
@@ -186,13 +208,17 @@ void StepperMotor::loadPresets(){
 void StepperMotor::writePresetToMemory(const byte preset, const byte newPosition){ // preset ass -1 for current location
 
   if(preset >= 0){
+    
     if(EEPROM.read(presetMemoryLocation(preset)) != newPosition){ //EEPROM has limited writes, so this may extend life
       EEPROM.write(presetMemoryLocation(preset), newPosition);
     }
+    
   }else if(preset == -1){ // writing new current Location
+  
     if(EEPROM.read(currentLocationMemoryLocation()) != newPosition){
       EEPROM.write(currentLocationMemoryLocation(), newPosition);
     }
+    
   }
   
 }

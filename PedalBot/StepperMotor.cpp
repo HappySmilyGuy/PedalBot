@@ -53,11 +53,11 @@ byte presets[MAX_PRESETS];
 StepperMotor::StepperMotor(const byte motorNo, const int encodorSPR, const int motorSPR) : number( motorNo ),
                                                                                            motorStepsPerRotation( motorSPR ),
                                                                                            encoderStepsPerRotation( encodorSPR ),
-                                                                                           dirPin( FIRST_DIR - 2 * number ),
-                                                                                           stepPin( number + FIRST_STEP ),
-                                                                                           sleepPin( FIRST_SLP - 2 * number ),
-                                                                                           encodorPinA( FIRST_ENA + 2 * number ),
-                                                                                           encodorPinB( FIRST_ENB + 2 * number )
+                                                                                           dirPin( FIRST_DIR - (2 * motorNo) ),
+                                                                                           stepPin( motorNo + FIRST_STEP ),
+                                                                                           sleepPin( FIRST_SLP - (2 * motorNo) ),
+                                                                                           encodorPinA( FIRST_ENA + (2 * motorNo) ),
+                                                                                           encodorPinB( FIRST_ENB + (2 * motorNo) )
 {
  
   // set up the pins  
@@ -87,22 +87,13 @@ StepperMotor::~StepperMotor(){
 
 
 void StepperMotor::drive(int angle, const byte dir){ //update to include rotary encodor
-  angle = 360; // REMOVE
-  
-  //checks done: motorStepsPerRotation == 1600.0, 
-  
-// THE PROBLEM IS (rotate !> 0)!!
   
   digitalWrite(sleepPin, HIGH);
-  float rotate = (float) (angle * motorStepsPerRotation) / 360.0; // to avoid rounding error
+  digitalWrite(dirPin, dir); //set the direction to rotate
   
-  if(rotate > 0){
-    digitalWrite(13, HIGH);
-    delay(2000);
-    digitalWrite(13, LOW);
-  }
+  float rotate = ((float) (angle)) * (motorStepsPerRotation / 360.0); // to avoid rounding error
   
-  for(int i = 0; i < rotate*2; i++){ //* 2 here to turn far enough <<<WARNING
+  for(int i = 0; i < rotate*4; i++){ //* 2 here to turn far enough <<<WARNING
       digitalWrite(stepPin, HIGH);
       delayMicroseconds(STEPDELAY);
       digitalWrite(stepPin, LOW);
@@ -110,8 +101,6 @@ void StepperMotor::drive(int angle, const byte dir){ //update to include rotary 
   }
   
   digitalWrite(sleepPin, LOW);
-
-  //update currentPosition
   
 }
 
@@ -120,18 +109,19 @@ void StepperMotor::moveToPreset(const byte preset){
   
   int pos = presets[preset];
   
-  //if(pos != UNSET){ // if the preset has been set
+  if(pos != UNSET){ // if the preset has been set
 
-    //int angle = pos - currentPosition;
-    int angle = 180;
+    int angle = pos - currentPosition;
     if(angle < 0){
-      drive(angle, CW);
+      drive(-1*angle, CW);
     }else if(angle > 0){
-      drive(-1*angle, ACW);
+      drive(angle, ACW); 
+    }else if(angle == 0){
+
     }
     
     currentPosition = pos;
-  //}
+  }
   
 }
 

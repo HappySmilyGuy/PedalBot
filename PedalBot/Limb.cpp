@@ -1,4 +1,4 @@
-#include "StepperMotor.h"
+#include "Limb.h"
 #include <EEPROM.h>
 
 
@@ -11,11 +11,12 @@
 #define UNSET 255        // placeholding value for a unset preset
 #define NOON 127         // neutral position (dial pointing straight up at noon)
 #define FLASH_SPEED 300  // delay in between LED flashes
+#define BIG_COG_TEETH 25 // the number of teeth on the limb's large cog
 
 #define FIRST_DIR 53     // the first Easy driver direction pin (DIR)
 #define FIRST_STEP 2     // the first Easy driver step pin (STEP)
 #define FIRST_SLP 52     // the first Easy Driver sleep pin (SLP)
-#define FIRST_BUTTOMN 22 // the first rotary encodor button pin
+#define FIRST_BUTTON 22  // the first rotary encoder button pin
 #define FIRST_LED 23     // the first limb LED pin
 
 
@@ -26,8 +27,8 @@
 byte dirPin;
 byte stepPin;
 byte sleepPin;
-byte encodorPinA;
-byte encodorPinB;
+byte encoderPinA;
+byte encoderPinB;
 byte led;
 byte button;
 
@@ -39,7 +40,7 @@ byte number;
 // from 'dirPin' to 'number' would be consts but it causes huge amounts of errors, because the arduino can not
 // specify when the constructor is called, so the compiler doesn't like using initialization lists for constants.
 
-volotile byte currentPosition = NOON; // will always load from RAM and is set to default of NOON before loaded.
+volatile byte currentPosition = NOON; // will always load from RAM and is set to default of NOON before loaded.
 byte presets[MAX_PRESETS];
 
 
@@ -56,21 +57,21 @@ int lastLSB = 0;
 
 // -------------------- CLASS METHODS -------------------- //
 
-
+    
 // --------- PUBLIC METHODS --------- //
 
 
 // ----- CONSTRUCTOR
-StepperMotor::StepperMotor(const byte motorNo, const int encodorSPR, const int motorSPR) : number( motorNo ),
-                                                                                           motorStepsPerRotation( motorSPR ),
-                                                                                           encoderStepsPerRotation( encodorSPR ),
-                                                                                           dirPin( FIRST_DIR - (2 * motorNo) ),
-                                                                                           stepPin( motorNo + FIRST_STEP ),
-                                                                                           sleepPin( FIRST_SLP - (2 * motorNo) ),
-                                                                                           encodorPinA( calculateEncodorPinA(motorNo) ),
-                                                                                           encodorPinB( calculateEncodorPinB(motorNo) ),
-                                                                                           led( FIRST_LED - motorNo*2 ),
-                                                                                           button( FIRST_BUTTON - motorNo*2 )
+Limb::Limb(const byte limbNo, const int encoderSPR, const int motorSPR) : number( limbNo ),
+                                                                                           motorStepsPerRotation( limbSPR ),
+                                                                                           encoderStepsPerRotation( encoderSPR ),
+                                                                                           dirPin( FIRST_DIR - (2 * limbNo) ),
+                                                                                           stepPin( limbNo + FIRST_STEP ),
+                                                                                           sleepPin( FIRST_SLP - (2 * limbNo) ),
+                                                                                           encoderPinA( calculateEncodorPinA(limbNo) ),
+                                                                                           encoderPinB( calculateEncodorPinB(limbNo) ),
+                                                                                           led( FIRST_LED - limbNo*2 ),
+                                                                                           button( FIRST_BUTTON - limbNo*2 )
 {
  
   // set up the pins  
@@ -79,8 +80,8 @@ StepperMotor::StepperMotor(const byte motorNo, const int encodorSPR, const int m
   pinMode(sleepPin, OUTPUT);
   pinMode(led, OUTPUT);
   
-  pinMode(encodorPinA, INPUT);
-  pinMode(encodorPinB, INPUT);
+  pinMode(encoderPinA, INPUT);
+  pinMode(encoderPinB, INPUT);
   pinMode(button, INPUT);
   
   // initialise output pins
@@ -100,53 +101,73 @@ StepperMotor::StepperMotor(const byte motorNo, const int encodorSPR, const int m
 
 
 // ----- DESTRUCTOR
-StepperMotor::~StepperMotor(){
+Limb::~Limb(){
   
 }
 
 
-void StepperMotor::drive(int angle, const byte dir){ //update to include rotary encodor
+
+void Limb::drive(const int newPosition){ //update to include rotary encoder
   
   digitalWrite(sleepPin, HIGH);
-  digitalWrite(dirPin, dir); //set the direction to rotate
   
-  float rotate = ((float) (angle)) * (motorStepsPerRotation / 360.0); // to avoid rounding error
+  int difference = newPosition - currentPosition;
+  int stepsPerNotch = motorStepsPerRotation / (360 / BIG_COG_TEETH);
   
-  for(int i = 0; i < rotate*4; i++){ //* 2 here to turn far enough <<<WARNING
-      digitalWrite(stepPin, HIGH);
-      delayMicroseconds(STEPDELAY);
-      digitalWrite(stepPin, LOW);
-      delayMicroseconds(STEPDELAY);
+  if(difference == 0){
+    //do nothing
+  }else if(difference > 0){ // if keep moving for far too long then CW and ACW are the wrong way round
+  
+    digitalWrite(dirPin, CW);
+    
+    while(currentPosition < newPosition){
+      
+      for(int i = 0; i < stepsPerNotch/4; i++){ // efficency: this loop is so a check isn't done every step
+        digitalWrite(stepPin, HIGH);
+        delayMicroseconds(STEPDELAY);
+        digitalWrite(stepPin, LOW);
+        delayMicroseconds(STEPDELAY);
+      }
+      
+    }
+    
+  }else if(difference < 0){
+    
+    digitalWrite(dirPin, ACW);
+    
+    while(currentPosition > newPosition){
+      
+      for(int i = 0; i < stepsPerNotch/4; i++){ // efficency: this loop is so a check isn't done every step
+        digitalWrite(stepPin, HIGH);
+        delayMicroseconds(STEPDELAY);
+        digitalWrite(stepPin, LOW);
+        delayMicroseconds(STEPDELAY);
+      }
+      
+    }
+    
   }
-  
+
   digitalWrite(sleepPin, LOW);
   
 }
 
 
-void StepperMotor::moveToPreset(const byte preset){
+void Limb::moveToPreset(const byte preset){
   
-  int pos = presets[preset];
+  int newPosition = presets[preset];
   
-  if(pos != UNSET){ // if the preset has been set
+  if(newPosition != UNSET){ // if the preset has been set
+  
+    drive(newPosition);
 
-    int angle = pos - currentPosition;
-    if(angle < 0){
-      drive(-1*angle, CW);
-    }else if(angle > 0){
-      drive(angle, ACW); 
-    }else if(angle == 0){
-
-    }
-    
-    //currentPosition = pos; //rotary encodor should automatically sort this out.
   }
   
 }
 
-void StepperMotor::checkButton(const byte currentPreset){
+void Limb::checkButton(const byte currentPreset){
   // User presses for half a second, this saves the preset and the  flashes to say this.
-  // holding on another 5 seconds clears the presets of the motor
+  // holding on another 5 seconds clears the presets of the limb
   // holding on another 5 resets the motor as if it's in the upright possition, for when attatching to a new pedal.
  
   if(!digitalRead(button)){ // button is being pressed
@@ -183,7 +204,7 @@ void StepperMotor::checkButton(const byte currentPreset){
 }
 
 
-void StepperMotor::savePreset(const byte currentPreset){
+void Limb::savePreset(const byte currentPreset){
   
   if(currentPreset != -1){
     presets[currentPreset] = currentPosition;
@@ -196,7 +217,7 @@ void StepperMotor::savePreset(const byte currentPreset){
 
 
 // ----- CLEARING FUNCTIONS
-void StepperMotor::clearPresets(){
+void Limb::clearPresets(){
   
   for(int preset = 0; preset < MAX_PRESETS; preset++){
     writePresetToMemory(preset, UNSET);
@@ -208,7 +229,7 @@ void StepperMotor::clearPresets(){
 }
 
 
-void StepperMotor::clearAll(){ // remove all presets and reset currentPosition of this motor
+void Limb::clearAll(){ // remove all presets and reset currentPosition of this limb
 
   currentPosition = NOON;
   
@@ -229,14 +250,14 @@ void StepperMotor::clearAll(){ // remove all presets and reset currentPosition o
 
 
 // ----- INLINES
-inline int presetMemoryLocation(const byte preset){
+inline int Limb::presetMemoryLocation(const byte preset){
   
   return number * (MAX_PRESETS + 1) + preset + 1;
   
 }
 
 
-inline int currentLocationMemoryLocation(){
+inline int Limb::currentLocationMemoryLocation(){
   
   return number * (MAX_PRESETS + 1); 
   
@@ -244,7 +265,7 @@ inline int currentLocationMemoryLocation(){
 
 
 // ----- INITIALISERS
-void StepperMotor::loadPresets(){
+void Limb::loadPresets(){
   
     for(int preset = 0; preset < MAX_PRESETS; preset++){
       presets[preset] = EEPROM.read(presetMemoryLocation(preset));
@@ -258,26 +279,26 @@ void StepperMotor::loadPresets(){
 }
 
 
-int calculateEncodorPinA(const int motorNo){
+int Limb::calculateEncodorPinA(const int limbNo){
   
-  if(motorNo == 0){
+  if(limbNo == 0){
     return 2;
-  }else if(motorNo == 1){
+  }else if(limbNo == 1){
     return 18;
-  }else if(motorNo == 2){
+  }else if(limbNo == 2){
     return 20;
   }else return -1;
   
 }
 
 
-int calculateEncodorPinB(const int motorNo){
+int Limb::calculateEncodorPinB(const int limbNo){
   
-  if(motorNo == 0){
+  if(limbNo == 0){
     return 3;
-  }else if(motorNo == 1){
+  }else if(limbNo == 1){
     return 19;
-  }else if(motorNo == 2){
+  }else if(limbNo == 2){
     return 21;
   }else return -1;
   
@@ -285,7 +306,7 @@ int calculateEncodorPinB(const int motorNo){
 
 
 // ----- FUNCTIONAL
-void StepperMotor::writePresetToMemory(const byte preset, const byte newPosition){ // preset ass -1 for current location
+void Limb::writePresetToMemory(const byte preset, const byte newPosition){ // input '-1' for preset to write a new current location
 
   if(preset >= 0){
     
@@ -304,10 +325,10 @@ void StepperMotor::writePresetToMemory(const byte preset, const byte newPosition
 }
 
 
-void encoderMovement(){
+void Limb::encoderMovement(){
   
-  int MSB = digitalRead(encoderPin1); //MSB = most significant bit
-  int LSB = digitalRead(encoderPin2); //LSB = least significant bit
+  int MSB = digitalRead(encoderPinA); //MSB = most significant bit
+  int LSB = digitalRead(encoderPinB); //LSB = least significant bit
 
   int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
   int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
@@ -319,7 +340,7 @@ void encoderMovement(){
   
 }
 
-void flashLED(const int time){
+void Limb::flashLED(const int time){
   
   digitalWrite(led, HIGH);
   delay(time);
@@ -328,7 +349,7 @@ void flashLED(const int time){
 }
 
 
-void flashLED(const int flashes, const int onTime, const int offTime){
+void Limb::flashLED(const int flashes, const int onTime, const int offTime){
   
   for(int i = 0; i < flashes - 1; i++){
     digitalWrite(led, HIGH);

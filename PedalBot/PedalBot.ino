@@ -1,14 +1,14 @@
 #include <MIDI.h>
 #include <EEPROM.h>
-#include "StepperMotor.h"
+#include "Limb.h"
 
 
 // --------- Control definitions and constants --------- //
 
 #define DEBUG 0
-#define MAX_MOTORS 3        // the maximum number of motors by the amount of memory used per motor and maximum EEPROM memory
-#define ENCODER_TO_MOTOR_RATIO 80 // 1600/20 (no. of steps per turn of motor) / (no. of steps per turn of encodor)
-#define SPR 1600.0       // steps per complete rotation of the stepper motor
+#define MAX_LIMBS 3        // the maximum number of limbs by the amount of memory used per limb and maximum EEPROM memory
+#define ENCODER_TO_LIMB_RATIO 80 // 1600/20 (no. of steps per turn of limb) / (no. of steps per turn of encoder)
+#define SPR 1600.0       // steps per complete rotation of the stepper limb
 
 
 // --------- PINS --------- //
@@ -18,9 +18,9 @@
 
 // --------- Global Variables --------- //
 int currentPreset = -1;
-StepperMotor stepperMotors[MAX_MOTORS] = { StepperMotor(0, 20, SPR),
-                                           StepperMotor(1, 20, SPR),
-                                           StepperMotor(2, 20, SPR) };
+Limb limbs[MAX_LIMBS] = { Limb(0, 20, SPR),
+                           Limb(1, 20, SPR),
+                           Limb(2, 20, SPR) };
 
 void setup(){
   
@@ -28,10 +28,6 @@ void setup(){
   pinMode(LED, OUTPUT);
   pinMode(CLEAR_ALL, INPUT);
 
-  for(int motor = 0; motor < MAX_MOTORS; motor++){
-    pinMode(savePresetPins[motor], INPUT);
-  }  
-  
   // MIDI initialising
   MIDI.begin(MIDI_CHANNEL_OMNI);  // listen for MIDI on all channels at all frequencies
   MIDI.setHandleProgramChange(ChangePreset);
@@ -57,8 +53,8 @@ void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't work
     flashLED(number, 100, 100);
   }
   
-  for(int motor = 0; motor < MAX_MOTORS; motor++){
-    stepperMotors[motor].moveToPreset(number);
+  for(int limb = 0; limb < MAX_LIMBS; limb++){
+    limbs[limb].moveToPreset(number);
   }
   
   currentPreset = number;
@@ -71,8 +67,8 @@ void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't work
 void checkButtons(){
   //if(digitalRead(CLEAR_ALL) == HIGH) checkClearPresetsButton();
   
-  for(int motor = 0; motor < MAX_MOTORS; motor++){
-    stepperMotors[motor].checkButton(const byte currentPreset);
+  for(int limb = 0; limb < MAX_LIMBS; limb++){
+    limbs[limb].checkButton(currentPreset);
   }
   
 }
@@ -125,8 +121,8 @@ void checkClearPresetsButton(){
 
 void clearAllPresets(){ // clears presets, but keeps current positions
   
-  for(int motor = 0; motor < MAX_MOTORS; motor++){
-    stepperMotors[motor].clearPresets();
+  for(int limb = 0; limb < MAX_LIMBS; limb++){
+    limbs[limb].clearPresets();
   }
   
   flashLED(500);
@@ -136,8 +132,8 @@ void clearAllPresets(){ // clears presets, but keeps current positions
 
 void factoryReset(){ //resests /ALL/ EEPROM memory
 
-  for(int motor = 0; motor < MAX_MOTORS; motor++){
-    stepperMotors[motor].clearAll();
+  for(int limb = 0; limb < MAX_LIMBS; limb++){
+    limbs[limb].clearAll();
   }
   
   flashLED(2, 500, 250);

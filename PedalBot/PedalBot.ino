@@ -21,7 +21,6 @@ int currentPreset = -1;
 StepperMotor stepperMotors[MAX_MOTORS] = { StepperMotor(0, 20, SPR),
                                            StepperMotor(1, 20, SPR),
                                            StepperMotor(2, 20, SPR) };
-byte savePresetPins[MAX_MOTORS] = { A0, A1, A2 };
 
 void setup(){
   
@@ -45,22 +44,17 @@ void loop(){
   
   MIDI.read();
   
-  //checkButtons();
+  checkButtons();
  
 }
 
 
 
 // --------- MIDI FUNCTIONS --------- //
-void ChangePreset(byte channel, byte number) {
+void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't working, remove 'const'
   
   if(DEBUG){
-    for(int i = 0; i < number; i++){
-          digitalWrite(LED, HIGH);
-          delay(100);
-          digitalWrite(LED, LOW);
-          delay(100);
-    }
+    flashLED(number, 100, 100);
   }
   
   for(int motor = 0; motor < MAX_MOTORS; motor++){
@@ -73,23 +67,16 @@ void ChangePreset(byte channel, byte number) {
 
 
 
-// --------- Preset Funcations ---------- //
-void clearAllPresets(){ // clears presets, but keeps current positions
-  for(int motor = 0; motor < MAX_MOTORS; motor++){
-    stepperMotors[motor].clearPresets();
-  }
-}
-
-
-
 // --------- BUTTON CHECKING METHODS --------- //
 void checkButtons(){
-  if(digitalRead(CLEAR_ALL) == HIGH) checkClearPresetsButton();
+  //if(digitalRead(CLEAR_ALL) == HIGH) checkClearPresetsButton();
   
-  //for(int motor = 0; motor < MAX_MOTORS; motor++){
-  //  if(digitalRead(savePresetPins[motor]) == HIGH) checkSavePresetButton(motor);
-  //} 
+  for(int motor = 0; motor < MAX_MOTORS; motor++){
+    stepperMotors[motor].checkButton(const byte currentPreset);
+  }
+  
 }
+
 
 void checkClearPresetsButton(){
   // User should hold the clear memory button for 12 seconds, in which they should see 
@@ -97,27 +84,38 @@ void checkClearPresetsButton(){
   // another 9 second wait and it will slow flash again and then quick flash, this is a complete factory reset.
   
   for(int i = 0; i < 20; i++){ // lots of delayed checks so it doesn't go off accidentily
+  
     delay(1000);
-    if(digitalRead(CLEAR_ALL) != HIGH) break;
+    
+    if(digitalRead(CLEAR_ALL) != HIGH)
+      break;
     else{
+      
+      switch(i){
+        case 8:
+          
+          break;
+         
+        case 9:
+       
+          break;
+         
+        case 18:
+        
+          break;
+        case 19:
+        
+          break;
+        
+      }
       if(i == 8){
-        digitalWrite(LED, HIGH);
-        delay(1000);
-        digitalWrite(LED, LOW);
+        flashLED(1000);
       }else if(i == 9){     
-    //    clearAllPresets();
-        digitalWrite(LED, HIGH);
-        delay(500);
-        digitalWrite(LED,LOW);
+       // clearAllPresets();
       }else if(i == 18){
-        digitalWrite(LED, HIGH);
-        delay(1000);
-        digitalWrite(LED, LOW);
+        flashLED(1000);
       }else if(i == 19){
-      //  factoryReset();
-        digitalWrite(LED, HIGH);
-        delay(500);
-        digitalWrite(LED,LOW);
+       // factoryReset();
       }
     }
   }
@@ -125,37 +123,13 @@ void checkClearPresetsButton(){
 }
 
 
-void checkSavePresetButton(byte motor){
-  // User presses for half a second, this saves the preset and LED 13 flashes to say this.
-  // holding on another 5 seconds clears the presets of the motor
-  // holding on another 5 resets the motor as if it's in the upright possition, for when attatching to a new pedal.
+void clearAllPresets(){ // clears presets, but keeps current positions
   
-  for(int i = 0; i < 10; i++){ // lots of delayed checks so it doesn't go off accidentily
-    delay(500);
-    if(digitalRead(savePresetPins[motor]) != HIGH) break;
-    else{
-      if(i == 0){
-        stepperMotors[motor].savePreset(currentPreset); 
-        digitalWrite(LED, HIGH);
-        delay(1000);
-        digitalWrite(LED, LOW);
-      }else if(i < 5){
-        delay(500); 
-      }else if(i == 5){
-        stepperMotors[motor].clearPresets();
-        digitalWrite(LED, HIGH);
-        delay(1000);
-        digitalWrite(LED, LOW);
-      }else if(i < 9){        
-        delay(500);
-      }else if(i == 9){     
-        stepperMotors[motor].clearAll();
-        digitalWrite(LED, HIGH);
-        delay(500);
-        digitalWrite(LED,LOW);
-      }
-    }
+  for(int motor = 0; motor < MAX_MOTORS; motor++){
+    stepperMotors[motor].clearPresets();
   }
+  
+  flashLED(500);
   
 }
 
@@ -164,6 +138,35 @@ void factoryReset(){ //resests /ALL/ EEPROM memory
 
   for(int motor = 0; motor < MAX_MOTORS; motor++){
     stepperMotors[motor].clearAll();
+  }
+  
+  flashLED(2, 500, 250);
+  
+}
+
+
+void flashLED(const int time){
+  
+  digitalWrite(LED, HIGH);
+  delay(time);
+  digitalWrite(LED, LOW);
+  
+}
+
+
+void flashLED(const int flashes, const int onTime, const int offTime){
+  
+  for(int i = 0; i < flashes - 1; i++){
+    digitalWrite(LED, HIGH);
+    delay(onTime);
+    digitalWrite(LED, LOW);
+    delay(offTime);
+  }
+  
+  if(flashes > 0){
+    digitalWrite(LED, HIGH);
+    delay(onTime);
+    digitalWrite(LED, LOW);
   }
   
 }

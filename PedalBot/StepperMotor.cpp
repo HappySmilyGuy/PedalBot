@@ -10,15 +10,16 @@
 #define MAX_PRESETS 128  // the maximum number of presets by the MIDI standard
 #define UNSET 255        // placeholding value for a unset preset
 #define NOON 127         // neutral position (dial pointing straight up at noon)
+#define FLASH_SPEED 300  // delay in between LED flashes
 
 #define FIRST_DIR 53     // the first Easy driver direction pin (DIR)
 #define FIRST_STEP 2     // the first Easy driver step pin (STEP)
 #define FIRST_SLP 52     // the first Easy Driver sleep pin (SLP)
-#define FIRST_ENA 22     // the first rotary encodor encodorA pin (ENA)
-#define FIRST_ENB 23     // the first rotary encodor encodorB pin (ENB)
+#define FIRST_BUTTOMN 22 // the first rotary encodor button pin
+#define FIRST_LED 23     // the first limb LED pin
 
 
-// -------------------- Class variables -------------------- //
+// -------------------- CLASS VARIABLES -------------------- //
 
 
 // ----- PINS
@@ -26,20 +27,30 @@ byte dirPin;
 byte stepPin;
 byte sleepPin;
 byte encodorPinA;
-byte encodorPinB; 
+byte encodorPinB;
+byte led;
+byte button;
 
 // ----- STEPPER MOTOR FACTS
 int motorStepsPerRotation;
 int encoderStepsPerRotation;
 
 byte number;
-// from dirPin to number would be consts but it causes huge amounts of errors, because the arduino can not
+// from 'dirPin' to 'number' would be consts but it causes huge amounts of errors, because the arduino can not
 // specify when the constructor is called, so the compiler doesn't like using initialization lists for constants.
 
-byte currentPosition;
+volotile byte currentPosition = NOON; // will always load from RAM and is set to default of NOON before loaded.
 byte presets[MAX_PRESETS];
 
 
+// ----- ROTRARY ENCODER VARIABLES
+volatile int lastEncoded = 0;
+volatile long encoderValue = 0;
+
+long lastencoderValue = 0;
+
+int lastMSB = 0;
+int lastLSB = 0;
 
 
 
@@ -56,26 +67,34 @@ StepperMotor::StepperMotor(const byte motorNo, const int encodorSPR, const int m
                                                                                            dirPin( FIRST_DIR - (2 * motorNo) ),
                                                                                            stepPin( motorNo + FIRST_STEP ),
                                                                                            sleepPin( FIRST_SLP - (2 * motorNo) ),
-                                                                                           encodorPinA( FIRST_ENA + (2 * motorNo) ),
-                                                                                           encodorPinB( FIRST_ENB + (2 * motorNo) )
+                                                                                           encodorPinA( calculateEncodorPinA(motorNo) ),
+                                                                                           encodorPinB( calculateEncodorPinB(motorNo) ),
+                                                                                           led( FIRST_LED - motorNo*2 ),
+                                                                                           button( FIRST_BUTTON - motorNo*2 )
 {
  
   // set up the pins  
   pinMode(dirPin, OUTPUT);
   pinMode(stepPin, OUTPUT);
   pinMode(sleepPin, OUTPUT);
+  pinMode(led, OUTPUT);
+  
   pinMode(encodorPinA, INPUT);
   pinMode(encodorPinB, INPUT);
-  pinMode(13, OUTPUT);
+  pinMode(button, INPUT);
   
   // initialise output pins
   digitalWrite(dirPin, CW);
   digitalWrite(stepPin, LOW);
   digitalWrite(sleepPin, LOW);
+  digitalWrite(led, LOW);
+
+  // Rotary Encodor interupts
+  //call updateEncoder() when any high/low changed seen on interrupt [number * 2], or interrupt [(number * 2) + 1]
+  attachInterrupt( number * 2, encoderMovement, CHANGE); 
+  attachInterrupt((number * 2) + 1, encoderMovement, CHANGE);
   
-  currentPosition = NOON;
-  
-  loadPresets();
+  loadPresets(); //loads 'presets' array and 'currentPosition'
   
 }
 
@@ -120,7 +139,45 @@ void StepperMotor::moveToPreset(const byte preset){
 
     }
     
-    currentPosition = pos;
+    //currentPosition = pos; //rotary encodor should automatically sort this out.
+  }
+  
+}
+
+void StepperMotor::checkButton(const byte currentPreset){
+  // User presses for half a second, this saves the preset and the  flashes to say this.
+  // holding on another 5 seconds clears the presets of the motor
+  // holding on another 5 resets the motor as if it's in the upright possition, for when attatching to a new pedal.
+ 
+  if(!digitalRead(button)){ // button is being pressed
+  
+    for(int i = 0; i < 15; i++){ 
+      // 15 steps so if user can release at any point with only a 500ms wait before other things can be done
+      // and it gives 2.5 seconds after clear all to let go before it saves the current possition as a preset.
+      
+      delay(500);
+      
+      if(digitalRead(button)) // button is not being pressed
+        break; 
+      else{
+        
+        switch(i){
+          case 0:
+            savePreset(currentPreset);
+            break;
+            
+          case 5:
+            clearPresets();
+            break;
+            
+          case 9:
+            clearAll();
+            break;
+        }
+        
+      }
+    }
+    
   }
   
 }
@@ -133,6 +190,8 @@ void StepperMotor::savePreset(const byte currentPreset){
     writePresetToMemory(currentPreset, currentPosition);
   }
   
+  flashLED(FLASH_SPEED);
+  
 }
 
 
@@ -144,6 +203,8 @@ void StepperMotor::clearPresets(){
     presets[preset] = UNSET;
   }
   
+  flashLED(2, FLASH_SPEED, FLASH_SPEED/2);
+  
 }
 
 
@@ -154,7 +215,9 @@ void StepperMotor::clearAll(){ // remove all presets and reset currentPosition o
   for(int preset = 0; preset < MAX_PRESETS; preset++){
     writePresetToMemory(preset, UNSET);
     presets[preset] = UNSET;
-  } 
+  }
+  
+  flashLED(3, FLASH_SPEED, FLASH_SPEED/2);
   
 }
 
@@ -189,8 +252,35 @@ void StepperMotor::loadPresets(){
     
     currentPosition = EEPROM.read(currentLocationMemoryLocation());
     
-    for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = random(0,254); //for display, remove and reset chip.
-    currentPosition = 255; // also remove  
+    // for debugging purposes
+    //for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = random(0,254); //for display, remove and reset chip.
+    //currentPosition = 255; // also remove  
+}
+
+
+int calculateEncodorPinA(const int motorNo){
+  
+  if(motorNo == 0){
+    return 2;
+  }else if(motorNo == 1){
+    return 18;
+  }else if(motorNo == 2){
+    return 20;
+  }else return -1;
+  
+}
+
+
+int calculateEncodorPinB(const int motorNo){
+  
+  if(motorNo == 0){
+    return 3;
+  }else if(motorNo == 1){
+    return 19;
+  }else if(motorNo == 2){
+    return 21;
+  }else return -1;
+  
 }
 
 
@@ -209,6 +299,48 @@ void StepperMotor::writePresetToMemory(const byte preset, const byte newPosition
       EEPROM.write(currentLocationMemoryLocation(), newPosition);
     }
     
+  }
+  
+}
+
+
+void encoderMovement(){
+  
+  int MSB = digitalRead(encoderPin1); //MSB = most significant bit
+  int LSB = digitalRead(encoderPin2); //LSB = least significant bit
+
+  int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
+  int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
+
+  if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) currentPosition++;
+  if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) currentPosition--;
+
+  lastEncoded = encoded; //store this value for next time
+  
+}
+
+void flashLED(const int time){
+  
+  digitalWrite(led, HIGH);
+  delay(time);
+  digitalWrite(led, LOW);
+  
+}
+
+
+void flashLED(const int flashes, const int onTime, const int offTime){
+  
+  for(int i = 0; i < flashes - 1; i++){
+    digitalWrite(led, HIGH);
+    delay(onTime);
+    digitalWrite(led, LOW);
+    delay(offTime);
+  }
+  
+  if(flashes > 0){
+    digitalWrite(led, HIGH);
+    delay(onTime);
+    digitalWrite(led, LOW);
   }
   
 }

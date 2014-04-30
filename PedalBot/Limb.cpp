@@ -68,35 +68,18 @@ void encoderMovement();
 
 
 // ----- CONSTRUCTOR
-Limb::Limb(){
-
-  //NOTE: Make sure to call initialise when before using the limb.
-  
-}
-
-
-// ----- DESTRUCTOR
-Limb::~Limb(){}
-
-
-// ----- INITIALISER
-void Limb::initialise(const byte limbNo){ 
-  // this is a product of Arduino. This was as an class initialisation list, as is best,
-  // but because of how an Arduino initialises stuff, it really doesn't like it.
-  // In short, it just doesn't know where things initialise, so you usually have a 'Begin' method
-  // as you'll see for the MIDI library. This is my equivilant.
-  
-  number = limbNo;
-  motorStepsPerRotation = SPR;
-  dirPin = FIRST_DIR - (2 * limbNo);
-  stepPin = limbNo + FIRST_STEP;
-  sleepPin = FIRST_SLP - (2 * limbNo);
-  encoderPinA = calculateEncodorPinA(limbNo);
-  encoderPinB = calculateEncodorPinB(limbNo);
-  led = FIRST_LED + (limbNo * 2);
-  button = FIRST_BUTTON + (limbNo * 2);
-  
-    // set up the pins  
+Limb::Limb(const byte limbNo) : number( limbNo ),
+	                        motorStepsPerRotation( SPR ),
+	                        dirPin( FIRST_DIR - (2 * limbNo) ),
+	                        stepPin( limbNo + FIRST_STEP ),
+	                        sleepPin( FIRST_SLP - (2 * limbNo) ),
+	                        encoderPinA( calculateEncodorPinA(limbNo) ),
+	                        encoderPinB( calculateEncodorPinB(limbNo) ),
+	                        led( FIRST_LED + (limbNo * 2) ),
+	                        button( FIRST_BUTTON + (limbNo * 2) )
+ {
+  	 
+  // set up the pins  
   pinMode(dirPin, OUTPUT);
   pinMode(stepPin, OUTPUT);
   pinMode(sleepPin, OUTPUT);
@@ -122,6 +105,30 @@ void Limb::initialise(const byte limbNo){
   loadPresets(); //loads 'presets' array and 'currentPosition'
   
 }
+
+
+// ----- DESTRUCTOR
+Limb::~Limb(){}
+
+
+// ----- INITIALISER
+/*void Limb::initialise(const byte limbNo){ 
+  // this is a product of Arduino. This was as an class initialisation list, as is best,
+  // but because of how an Arduino initialises stuff, it really doesn't like it.
+  // In short, it just doesn't know where things initialise, so you usually have a 'Begin' method
+  // as you'll see for the MIDI library. This is my equivilant.
+  
+  number = limbNo;
+  motorStepsPerRotation = SPR;
+  dirPin = FIRST_DIR - (2 * limbNo);
+  stepPin = limbNo + FIRST_STEP;
+  sleepPin = FIRST_SLP - (2 * limbNo);
+  encoderPinA = calculateEncodorPinA(limbNo);
+  encoderPinB = calculateEncodorPinB(limbNo);
+  led = FIRST_LED + (limbNo * 2);
+  button = FIRST_BUTTON + (limbNo * 2);*/
+  
+
 
 
 void Limb::drive(const int newPosition){ //update to include rotary encoder

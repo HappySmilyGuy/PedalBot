@@ -16,14 +16,14 @@
 
 // --------- Global Variables --------- //
 int currentPreset = -1;
-Limb limbs[MAX_LIMBS] = { Limb(),
-                          Limb(),
-                          Limb() };
+Limb limbs[MAX_LIMBS] = { Limb(0),
+                          Limb(1),
+                          Limb(2) };
 
 
 void setup(){
   
-  limbs[1].initialise(1);
+ // limbs[1].initialise(1);
 
 /*  for(int limb = 0; limb < MAX_LIMBS; limb++){
     limbs[limb].initialise(limb);

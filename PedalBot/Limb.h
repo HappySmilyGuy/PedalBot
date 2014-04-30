@@ -41,9 +41,9 @@ class Limb{
     void flashLED(const int flashes, const int onTime, const int offTime);
     
   public:  
-    Limb();
+    Limb(const byte limbNo);
     ~Limb();
-    void initialise(const byte limbNo);
+    //void initialise(const byte limbNo);
     void drive(const int newPosition);
     void moveToPreset(const byte preset);
     void checkButton(const byte currentPreset);

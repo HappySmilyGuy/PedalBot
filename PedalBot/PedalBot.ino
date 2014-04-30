@@ -5,28 +5,40 @@
 
 // --------- Control definitions and constants --------- //
 
-#define DEBUG 0
-#define MAX_LIMBS 3        // the maximum number of limbs by the amount of memory used per limb and maximum EEPROM memory
-#define ENCODER_TO_LIMB_RATIO 80 // 1600/20 (no. of steps per turn of limb) / (no. of steps per turn of encoder)
-#define SPR 1600.0       // steps per complete rotation of the stepper limb
+#define DEBUG true
+#define MAX_LIMBS 3   // the maximum number of limbs by the amount of memory used per limb and maximum EEPROM memory
 
 
 // --------- PINS --------- //
-#define LED 13                    // Arduino LED (L) control
-#define CLEAR_ALL 39              // reset button press
+#define LED 13        // Arduino LED (L) control
+#define CLEAR_ALL 39  // reset button press
 
 
 // --------- Global Variables --------- //
 int currentPreset = -1;
-Limb limbs[MAX_LIMBS] = { Limb(0, 20, SPR),
-                           Limb(1, 20, SPR),
-                           Limb(2, 20, SPR) };
+Limb limbs[MAX_LIMBS] = { Limb(),
+                          Limb(),
+                          Limb() };
+
 
 void setup(){
+  
+  limbs[1].initialise(1);
+
+/*  for(int limb = 0; limb < MAX_LIMBS; limb++){
+    limbs[limb].initialise(limb);
+  } */
+  
+    if(DEBUG){
+     factoryReset();
+  }
+
   
   // PIN initialisation
   pinMode(LED, OUTPUT);
   pinMode(CLEAR_ALL, INPUT);
+  
+  
 
   // MIDI initialising
   MIDI.begin(MIDI_CHANNEL_OMNI);  // listen for MIDI on all channels at all frequencies
@@ -50,11 +62,11 @@ void loop(){
 void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't working, remove 'const'
   
   if(DEBUG){
-    flashLED(number, 100, 100);
+    flashLED(number, 200, 100);
   }
   
   for(int limb = 0; limb < MAX_LIMBS; limb++){
-    limbs[limb].moveToPreset(number);
+    limbs[limb].moveToPreset(number); // ERROR: hanging
   }
   
   currentPreset = number;

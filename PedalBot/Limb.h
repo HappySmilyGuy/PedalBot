@@ -11,19 +11,18 @@ class Limb{
     // ------ CONSTANTS
     
     // ----- PINS
-    const byte dirPin;
-    const byte stepPin;
-    const byte sleepPin;
-    const byte encoderPinA;
-    const byte encoderPinB;
-    const byte led;
-    const byte button;
+    byte dirPin;
+    byte stepPin;
+    byte sleepPin;
+    byte encoderPinA;
+    byte encoderPinB;
+    byte led;
+    byte button;
     
     // ----- RATIOS
-    const int motorStepsPerRotation;
-    const int encoderStepsPerRotation;
+    int motorStepsPerRotation;
     
-    const byte number; // the number of limb
+    byte number; // the number of limb
     
     // ----- VARIABLES
     byte currentPosition;
@@ -36,15 +35,15 @@ class Limb{
     // ----- ROTARY ENCODOR
     int calculateEncodorPinB(const int limbNo);
     int calculateEncodorPinA(const int limbNo);
-    void encoderMovement();
 
     // ----- MISC
     void flashLED(const int time);
     void flashLED(const int flashes, const int onTime, const int offTime);
     
   public:  
-    Limb(const byte limbNo, const int encoderSPR, const int motorSPR);
+    Limb();
     ~Limb();
+    void initialise(const byte limbNo);
     void drive(const int newPosition);
     void moveToPreset(const byte preset);
     void checkButton(const byte currentPreset);

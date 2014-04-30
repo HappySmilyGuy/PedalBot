@@ -12,6 +12,7 @@
 #define NOON 127         // neutral position (dial pointing straight up at noon)
 #define FLASH_SPEED 300  // delay in between LED flashes
 #define BIG_COG_TEETH 25 // the number of teeth on the limb's large cog
+#define SPR 1600.0       // steps per complete rotation of the stepper limb
 
 #define FIRST_DIR 53     // the first Easy driver direction pin (DIR)
 #define FIRST_STEP 2     // the first Easy driver step pin (STEP)
@@ -34,7 +35,6 @@ byte button;
 
 // ----- STEPPER MOTOR FACTS
 int motorStepsPerRotation;
-int encoderStepsPerRotation;
 
 byte number;
 // from 'dirPin' to 'number' would be consts but it causes huge amounts of errors, because the arduino can not
@@ -57,24 +57,45 @@ int lastLSB = 0;
 
 // -------------------- CLASS METHODS -------------------- //
 
+
+// --------- FORWARD DECLITATIONS --------//
+
+void encoderMovement();
+
     
 // --------- PUBLIC METHODS --------- //
 
 
 // ----- CONSTRUCTOR
-Limb::Limb(const byte limbNo, const int encoderSPR, const int motorSPR) : number( limbNo ),
-                                                                                           motorStepsPerRotation( limbSPR ),
-                                                                                           encoderStepsPerRotation( encoderSPR ),
-                                                                                           dirPin( FIRST_DIR - (2 * limbNo) ),
-                                                                                           stepPin( limbNo + FIRST_STEP ),
-                                                                                           sleepPin( FIRST_SLP - (2 * limbNo) ),
-                                                                                           encoderPinA( calculateEncodorPinA(limbNo) ),
-                                                                                           encoderPinB( calculateEncodorPinB(limbNo) ),
-                                                                                           led( FIRST_LED - limbNo*2 ),
-                                                                                           button( FIRST_BUTTON - limbNo*2 )
-{
- 
-  // set up the pins  
+Limb::Limb(){
+
+  //NOTE: Make sure to call initialise when before using the limb.
+  
+}
+
+
+// ----- DESTRUCTOR
+Limb::~Limb(){}
+
+
+// ----- INITIALISER
+void Limb::initialise(const byte limbNo){ 
+  // this is a product of Arduino. This was as an class initialisation list, as is best,
+  // but because of how an Arduino initialises stuff, it really doesn't like it.
+  // In short, it just doesn't know where things initialise, so you usually have a 'Begin' method
+  // as you'll see for the MIDI library. This is my equivilant.
+  
+  number = limbNo;
+  motorStepsPerRotation = SPR;
+  dirPin = FIRST_DIR - (2 * limbNo);
+  stepPin = limbNo + FIRST_STEP;
+  sleepPin = FIRST_SLP - (2 * limbNo);
+  encoderPinA = calculateEncodorPinA(limbNo);
+  encoderPinB = calculateEncodorPinB(limbNo);
+  led = FIRST_LED + (limbNo * 2);
+  button = FIRST_BUTTON + (limbNo * 2);
+  
+    // set up the pins  
   pinMode(dirPin, OUTPUT);
   pinMode(stepPin, OUTPUT);
   pinMode(sleepPin, OUTPUT);
@@ -83,6 +104,8 @@ Limb::Limb(const byte limbNo, const int encoderSPR, const int motorSPR) : number
   pinMode(encoderPinA, INPUT);
   pinMode(encoderPinB, INPUT);
   pinMode(button, INPUT);
+  
+  digitalWrite(button, HIGH); //engages digital pullup
   
   // initialise output pins
   digitalWrite(dirPin, CW);
@@ -100,19 +123,14 @@ Limb::Limb(const byte limbNo, const int encoderSPR, const int motorSPR) : number
 }
 
 
-// ----- DESTRUCTOR
-Limb::~Limb(){
-  
-}
-
-
-
 void Limb::drive(const int newPosition){ //update to include rotary encoder
   
   digitalWrite(sleepPin, HIGH);
   
   int difference = newPosition - currentPosition;
   int stepsPerNotch = motorStepsPerRotation / (360 / BIG_COG_TEETH);
+  
+  flashLED(1000);
   
   if(difference == 0){
     //do nothing
@@ -155,11 +173,13 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
 
 void Limb::moveToPreset(const byte preset){
   
+  flashLED(1000);
+  
   int newPosition = presets[preset];
   
   if(newPosition != UNSET){ // if the preset has been set
   
-    drive(newPosition);
+    //drive(newPosition);
 
   }
   
@@ -169,17 +189,17 @@ void Limb::checkButton(const byte currentPreset){
   // User presses for half a second, this saves the preset and the  flashes to say this.
   // holding on another 5 seconds clears the presets of the limb
   // holding on another 5 resets the motor as if it's in the upright possition, for when attatching to a new pedal.
- 
-  if(!digitalRead(button)){ // button is being pressed
   
+  if(!digitalRead(button)){ // button is being pressed
+    
     for(int i = 0; i < 15; i++){ 
       // 15 steps so if user can release at any point with only a 500ms wait before other things can be done
       // and it gives 2.5 seconds after clear all to let go before it saves the current possition as a preset.
       
-      delay(500);
+      if(i != 0) delay(500);
       
       if(digitalRead(button)) // button is not being pressed
-        break; 
+        break;
       else{
         
         switch(i){
@@ -211,6 +231,7 @@ void Limb::savePreset(const byte currentPreset){
     writePresetToMemory(currentPreset, currentPosition);
   }
   
+  flashLED(FLASH_SPEED);
   flashLED(FLASH_SPEED);
   
 }
@@ -250,14 +271,14 @@ void Limb::clearAll(){ // remove all presets and reset currentPosition of this l
 
 
 // ----- INLINES
-inline int Limb::presetMemoryLocation(const byte preset){
+inline int presetMemoryLocation(const byte preset){
   
   return number * (MAX_PRESETS + 1) + preset + 1;
   
 }
 
 
-inline int Limb::currentLocationMemoryLocation(){
+inline int currentLocationMemoryLocation(){
   
   return number * (MAX_PRESETS + 1); 
   
@@ -325,7 +346,7 @@ void Limb::writePresetToMemory(const byte preset, const byte newPosition){ // in
 }
 
 
-void Limb::encoderMovement(){
+void encoderMovement(){
   
   int MSB = digitalRead(encoderPinA); //MSB = most significant bit
   int LSB = digitalRead(encoderPinB); //LSB = least significant bit

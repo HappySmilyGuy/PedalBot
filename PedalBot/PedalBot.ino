@@ -5,7 +5,7 @@
 
 // --------- Control definitions and constants --------- //
 
-#define DEBUG true
+#define DEBUG false
 #define MAX_LIMBS 3   // the maximum number of limbs by the amount of memory used per limb and maximum EEPROM memory
 
 
@@ -16,21 +16,21 @@
 
 // --------- Global Variables --------- //
 int currentPreset = -1;
-Limb limbs[MAX_LIMBS] = { Limb(0),
-                          Limb(1),
-                          Limb(2) };
+Limb limb0 = Limb(0);
+Limb limb1 = Limb(1);
+Limb limb2 = Limb(2);
+
+Limb limbs[MAX_LIMBS] = { limb2, limb1, limb0 };
 
 
 void setup(){
-  
- // limbs[1].initialise(1);
 
 /*  for(int limb = 0; limb < MAX_LIMBS; limb++){
     limbs[limb].initialise(limb);
   } */
   
-    if(DEBUG){
-     factoryReset();
+  if(DEBUG){
+     //factoryReset();
   }
 
   
@@ -66,7 +66,9 @@ void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't work
   }
   
   for(int limb = 0; limb < MAX_LIMBS; limb++){
+    
     limbs[limb].moveToPreset(number); // ERROR: hanging
+    
   }
   
   currentPreset = number;
@@ -177,4 +179,22 @@ void flashLED(const int flashes, const int onTime, const int offTime){
     digitalWrite(LED, LOW);
   }
   
+}
+
+void encoderMovement(){
+  digitalWrite(13, HIGH);  
+  
+  for(int limb = 0; limb < MAX_LIMBS; limb++){
+    int MSB = digitalRead(limbs[limb].encoderPinA); //MSB = most significant bit
+    int LSB = digitalRead(limbs[limb].encoderPinB); //LSB = least significant bit
+  
+    int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
+    int sum  = (limbs[limb].lastEncoded << 2) | encoded; //adding it to the previous encoded value
+  
+    if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) limbs[limb].currentPosition++;
+    if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) limbs[limb].currentPosition--;
+    
+    limbs[limb].lastEncoded = encoded; //store this value for next time
+  }
+  digitalWrite(13, LOW);
 }

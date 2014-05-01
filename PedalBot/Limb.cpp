@@ -7,15 +7,15 @@
 #define STEPDELAY 200    // delay between each step in micro seconds
 #define CW LOW           // clockwize, for DIR pin
 #define ACW HIGH         // anticlockwise, for DIR pin
-#define MAX_PRESETS 128  // the maximum number of presets by the MIDI standard
+
 #define UNSET 255        // placeholding value for a unset preset
-#define NOON 127         // neutral position (dial pointing straight up at noon)
+#define NOON 127           // neutral position (dial pointing straight up at noon)
 #define FLASH_SPEED 300  // delay in between LED flashes
 #define BIG_COG_TEETH 25 // the number of teeth on the limb's large cog
 #define SPR 1600.0       // steps per complete rotation of the stepper limb
 
 #define FIRST_DIR 53     // the first Easy driver direction pin (DIR)
-#define FIRST_STEP 2     // the first Easy driver step pin (STEP)
+#define FIRST_STEP 12     // the first Easy driver step pin (STEP)
 #define FIRST_SLP 52     // the first Easy Driver sleep pin (SLP)
 #define FIRST_BUTTON 22  // the first rotary encoder button pin
 #define FIRST_LED 23     // the first limb LED pin
@@ -25,20 +25,12 @@
 
 
 // ----- PINS
-byte dirPin;
-byte stepPin;
-byte sleepPin;
-byte encoderPinA;
-byte encoderPinB;
-
-byte led;
-byte button;
+byte dirPin, stepPin, sleepPin, encoderPinA, encoderPinB, led, button, number;
 
 // ----- STEPPER MOTOR FACTS
 int motorStepsPerRotation;
 
-byte number;
-// from 'dirPin' to 'number' would be consts but it causes huge amounts of errors, because the arduino can not
+// all the above variables would be consts but it causes huge amounts of errors, because the arduino can not
 // specify when the constructor is called, so the compiler doesn't like using initialization lists for constants.
 
 volatile byte currentPosition = NOON; // will always load from RAM and is set to default of NOON before loaded.
@@ -47,7 +39,6 @@ byte presets[MAX_PRESETS];
 
 // ----- ROTRARY ENCODER VARIABLES
 volatile int lastEncoded = 0;
-volatile long encoderValue = 0;
 
 long lastencoderValue = 0;
 
@@ -60,9 +51,7 @@ int lastLSB = 0;
 
 
 // --------- FORWARD DECLITATIONS --------//
-
 void encoderMovement();
-
     
 // --------- PUBLIC METHODS --------- //
 
@@ -70,8 +59,8 @@ void encoderMovement();
 // ----- CONSTRUCTOR
 Limb::Limb(const byte limbNo) : number( limbNo ),
 	                        motorStepsPerRotation( SPR ),
+                                stepPin( FIRST_STEP - limbNo ),
 	                        dirPin( FIRST_DIR - (2 * limbNo) ),
-	                        stepPin( limbNo + FIRST_STEP ),
 	                        sleepPin( FIRST_SLP - (2 * limbNo) ),
 	                        encoderPinA( calculateEncodorPinA(limbNo) ),
 	                        encoderPinB( calculateEncodorPinB(limbNo) ),
@@ -99,11 +88,12 @@ Limb::Limb(const byte limbNo) : number( limbNo ),
 
   // Rotary Encodor interupts
   //call updateEncoder() when any high/low changed seen on interrupt [number * 2], or interrupt [(number * 2) + 1]
-  attachInterrupt( number * 2, encoderMovement, CHANGE); 
-  attachInterrupt((number * 2) + 1, encoderMovement, CHANGE);
+  attachInterrupt( limbNo * 2, encoderMovement, CHANGE); 
+  attachInterrupt((limbNo * 2) + 1, encoderMovement, CHANGE);
   
   loadPresets(); //loads 'presets' array and 'currentPosition'
   
+
 }
 
 
@@ -132,23 +122,32 @@ Limb::~Limb(){}
 
 
 void Limb::drive(const int newPosition){ //update to include rotary encoder
-  
-  digitalWrite(sleepPin, HIGH);
-  
-  int difference = newPosition - currentPosition;
+
   int stepsPerNotch = motorStepsPerRotation / (360 / BIG_COG_TEETH);
   
-  flashLED(1000);
+  digitalWrite(sleepPin, HIGH);
+  digitalWrite(led, HIGH);
   
-  if(difference == 0){
-    //do nothing
-  }else if(difference > 0){ // if keep moving for far too long then CW and ACW are the wrong way round
+  int difference = newPosition - currentPosition;
   
-    digitalWrite(dirPin, CW);
+  while(difference > 4 || difference < -4){
     
-    while(currentPosition < newPosition){
+    if(difference > 0){ // if keep moving for far too long then CW and ACW are the wrong way round
+  
+      digitalWrite(dirPin, CW);
+    
+      for(int i = 0; i < ((currentPosition - newPosition) * stepsPerNotch) / 4; i++){
+        digitalWrite(stepPin, HIGH);
+        delayMicroseconds(STEPDELAY);
+        digitalWrite(stepPin, LOW);
+        delayMicroseconds(STEPDELAY);
+      }
       
-      for(int i = 0; i < stepsPerNotch/4; i++){ // efficency: this loop is so a check isn't done every step
+    }else if(difference < 0){
+    
+      digitalWrite(dirPin, ACW); 
+      
+      for(int i = 0; i < ((currentPosition - newPosition) * stepsPerNotch) / 4; i++){
         digitalWrite(stepPin, HIGH);
         delayMicroseconds(STEPDELAY);
         digitalWrite(stepPin, LOW);
@@ -157,37 +156,27 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
       
     }
     
-  }else if(difference < 0){
+    difference = newPosition - currentPosition;
     
-    digitalWrite(dirPin, ACW);
-    
-    while(currentPosition > newPosition){
-      
-      for(int i = 0; i < stepsPerNotch/4; i++){ // efficency: this loop is so a check isn't done every step
-        digitalWrite(stepPin, HIGH);
-        delayMicroseconds(STEPDELAY);
-        digitalWrite(stepPin, LOW);
-        delayMicroseconds(STEPDELAY);
-      }
-      
-    }
+    delay(200);
     
   }
-
+  
   digitalWrite(sleepPin, LOW);
+  digitalWrite(led, LOW);
   
 }
 
 
 void Limb::moveToPreset(const byte preset){
   
-  flashLED(1000);
-  
+  //ERROR: the presets don't seem to set correctly.
+    
   int newPosition = presets[preset];
   
   if(newPosition != UNSET){ // if the preset has been set
-  
-    //drive(newPosition);
+
+    drive(newPosition);
 
   }
   
@@ -296,15 +285,15 @@ inline int currentLocationMemoryLocation(){
 // ----- INITIALISERS
 void Limb::loadPresets(){
   
-    for(int preset = 0; preset < MAX_PRESETS; preset++){
+    /*for(int preset = 0; preset < MAX_PRESETS; preset++){
       presets[preset] = EEPROM.read(presetMemoryLocation(preset));
     }
     
-    currentPosition = EEPROM.read(currentLocationMemoryLocation());
+    currentPosition = EEPROM.read(currentLocationMemoryLocation());*/
     
     // for debugging purposes
-    //for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = random(0,254); //for display, remove and reset chip.
-    //currentPosition = 255; // also remove  
+    for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = 1; //for display, remove and reset chip.
+    currentPosition = NOON; // also remove  
 }
 
 
@@ -353,21 +342,6 @@ void Limb::writePresetToMemory(const byte preset, const byte newPosition){ // in
   
 }
 
-
-void encoderMovement(){
-  
-  int MSB = digitalRead(encoderPinA); //MSB = most significant bit
-  int LSB = digitalRead(encoderPinB); //LSB = least significant bit
-
-  int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
-  int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
-
-  if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) currentPosition++;
-  if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) currentPosition--;
-
-  lastEncoded = encoded; //store this value for next time
-  
-}
 
 void Limb::flashLED(const int time){
   

@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-
+#define MAX_PRESETS 128  // the maximum number of presets by the MIDI standard
 
 class Limb{
   private:
@@ -11,22 +11,16 @@ class Limb{
     // ------ CONSTANTS
     
     // ----- PINS
-    byte dirPin;
-    byte stepPin;
-    byte sleepPin;
-    byte encoderPinA;
-    byte encoderPinB;
-    byte led;
-    byte button;
+    byte dirPin, stepPin, sleepPin, led, button, number;
     
     // ----- RATIOS
     int motorStepsPerRotation;
     
-    byte number; // the number of limb
-    
     // ----- VARIABLES
-    byte currentPosition;
-    byte presets[];
+    byte presets[MAX_PRESETS];
+    
+    
+    // --------- METHODS --------- //
     
     // ----- EEPROM
     void loadPresets();
@@ -34,13 +28,21 @@ class Limb{
 
     // ----- ROTARY ENCODOR
     int calculateEncodorPinB(const int limbNo);
-    int calculateEncodorPinA(const int limbNo);
+    int calculateEncodorPinA(const int limbNo); 
 
     // ----- MISC
     void flashLED(const int time);
     void flashLED(const int flashes, const int onTime, const int offTime);
     
-  public:  
+  public:
+    // ----- VARIABLES
+    byte encoderPinA; // these need to be public for the rotary encoder interupts
+    byte encoderPinB; // because the function needs to be static for the interupt to work
+    volatile int lastEncoded;
+    byte currentPosition;
+   
+    
+    // --------- METHODS --------- //
     Limb(const byte limbNo);
     ~Limb();
     //void initialise(const byte limbNo);

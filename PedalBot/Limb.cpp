@@ -101,26 +101,6 @@ Limb::Limb(const byte limbNo) : number( limbNo ),
 Limb::~Limb(){}
 
 
-// ----- INITIALISER
-/*void Limb::initialise(const byte limbNo){ 
-  // this is a product of Arduino. This was as an class initialisation list, as is best,
-  // but because of how an Arduino initialises stuff, it really doesn't like it.
-  // In short, it just doesn't know where things initialise, so you usually have a 'Begin' method
-  // as you'll see for the MIDI library. This is my equivilant.
-  
-  number = limbNo;
-  motorStepsPerRotation = SPR;
-  dirPin = FIRST_DIR - (2 * limbNo);
-  stepPin = limbNo + FIRST_STEP;
-  sleepPin = FIRST_SLP - (2 * limbNo);
-  encoderPinA = calculateEncodorPinA(limbNo);
-  encoderPinB = calculateEncodorPinB(limbNo);
-  led = FIRST_LED + (limbNo * 2);
-  button = FIRST_BUTTON + (limbNo * 2);*/
-  
-
-
-
 void Limb::drive(const int newPosition){ //update to include rotary encoder
 
   int stepsPerNotch = motorStepsPerRotation / (360 / BIG_COG_TEETH);
@@ -130,13 +110,13 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
   
   int difference = newPosition - currentPosition;
   
-  while(difference > 4 || difference < -4){
+  while(difference < -5 || difference > 5){
     
     if(difference > 0){ // if keep moving for far too long then CW and ACW are the wrong way round
-  
-      digitalWrite(dirPin, CW);
     
-      for(int i = 0; i < ((currentPosition - newPosition) * stepsPerNotch) / 4; i++){
+      digitalWrite(dirPin, ACW);
+    
+      for(int i = 0; i < (difference * stepsPerNotch) / 7; i++){
         digitalWrite(stepPin, HIGH);
         delayMicroseconds(STEPDELAY);
         digitalWrite(stepPin, LOW);
@@ -144,10 +124,10 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
       }
       
     }else if(difference < 0){
-    
-      digitalWrite(dirPin, ACW); 
       
-      for(int i = 0; i < ((currentPosition - newPosition) * stepsPerNotch) / 4; i++){
+      digitalWrite(dirPin, CW); 
+      
+      for(int i = 0; i < (-difference * stepsPerNotch) / 7; i++){
         digitalWrite(stepPin, HIGH);
         delayMicroseconds(STEPDELAY);
         digitalWrite(stepPin, LOW);
@@ -157,8 +137,6 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
     }
     
     difference = newPosition - currentPosition;
-    
-    delay(200);
     
   }
   
@@ -171,6 +149,8 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
 void Limb::moveToPreset(const byte preset){
   
   //ERROR: the presets don't seem to set correctly.
+  
+  flashLED(500);
     
   int newPosition = presets[preset];
   
@@ -292,7 +272,7 @@ void Limb::loadPresets(){
     currentPosition = EEPROM.read(currentLocationMemoryLocation());*/
     
     // for debugging purposes
-    for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = 1; //for display, remove and reset chip.
+    for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = NOON; //for display, remove and reset chip.
     currentPosition = NOON; // also remove  
 }
 

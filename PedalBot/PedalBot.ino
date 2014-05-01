@@ -6,7 +6,7 @@
 // --------- Control definitions and constants --------- //
 
 #define DEBUG false
-#define MAX_LIMBS 3   // the maximum number of limbs by the amount of memory used per limb and maximum EEPROM memory
+#define MAX_LIMBS 2   // the maximum number of limbs by the amount of memory used per limb and maximum EEPROM memory
 
 
 // --------- PINS --------- //
@@ -16,21 +16,17 @@
 
 // --------- Global Variables --------- //
 int currentPreset = -1;
-Limb limb0 = Limb(0);
+//Limb limb0 = Limb(0); //inturupt pins not working.
 Limb limb1 = Limb(1);
 Limb limb2 = Limb(2);
 
-Limb limbs[MAX_LIMBS] = { limb2, limb1, limb0 };
+Limb limbs[MAX_LIMBS] = { limb2, limb1 };
 
 
 void setup(){
 
-/*  for(int limb = 0; limb < MAX_LIMBS; limb++){
-    limbs[limb].initialise(limb);
-  } */
-  
   if(DEBUG){
-     //factoryReset();
+     factoryReset();
   }
 
   
@@ -38,7 +34,7 @@ void setup(){
   pinMode(LED, OUTPUT);
   pinMode(CLEAR_ALL, INPUT);
   
-  
+  digitalWrite(CLEAR_ALL, HIGH); //try this to stop the button randomly pressing.
 
   // MIDI initialising
   MIDI.begin(MIDI_CHANNEL_OMNI);  // listen for MIDI on all channels at all frequencies
@@ -103,31 +99,25 @@ void checkClearPresetsButton(){
       
       switch(i){
         case 8:
-          
+          flashLED(1000);
           break;
          
         case 9:
-       
+          clearAllPresets();
           break;
          
         case 18:
-        
+          flashLED(1000);
           break;
+          
         case 19:
-        
+          factoryReset();
           break;
         
       }
-      if(i == 8){
-        flashLED(1000);
-      }else if(i == 9){     
-       // clearAllPresets();
-      }else if(i == 18){
-        flashLED(1000);
-      }else if(i == 19){
-       // factoryReset();
-      }
+      
     }
+    
   }
   
 }

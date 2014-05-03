@@ -16,11 +16,15 @@
 
 // --------- Global Variables --------- //
 int currentPreset = -1;
-//Limb limb0 = Limb(0); //inturupt pins not working.
+//Limb limb0 = Limb(0); //inturupt pins malfunction
 Limb limb1 = Limb(1);
 Limb limb2 = Limb(2);
 
 Limb limbs[MAX_LIMBS] = { limb2, limb1 };
+
+//for rotary encoder interupt pins
+int MSB[MAX_LIMBS]; //MSB = most significant bit
+int LSB[MAX_LIMBS]; //LSB = least significant bit
 
 
 void setup(){
@@ -34,7 +38,7 @@ void setup(){
   pinMode(LED, OUTPUT);
   pinMode(CLEAR_ALL, INPUT);
   
-  digitalWrite(CLEAR_ALL, HIGH); //try this to stop the button randomly pressing.
+  digitalWrite(CLEAR_ALL, HIGH); // engages digital pull-up
 
   // MIDI initialising
   MIDI.begin(MIDI_CHANNEL_OMNI);  // listen for MIDI on all channels at all frequencies
@@ -57,13 +61,11 @@ void loop(){
 // --------- MIDI FUNCTIONS --------- //
 void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't working, remove 'const'
   
-  if(DEBUG){
-    flashLED(number, 200, 100);
-  }
+  if(DEBUG) flashLED(number, 200, 100);
   
   for(int limb = 0; limb < MAX_LIMBS; limb++){
     
-    limbs[limb].moveToPreset(number); // ERROR: hanging
+    limbs[limb].moveToPreset(number);
     
   }
   
@@ -172,19 +174,29 @@ void flashLED(const int flashes, const int onTime, const int offTime){
 }
 
 void encoderMovement(){
-  digitalWrite(13, HIGH);  
+  if(DEBUG) digitalWrite(13, HIGH);
   
   for(int limb = 0; limb < MAX_LIMBS; limb++){
-    int MSB = digitalRead(limbs[limb].encoderPinA); //MSB = most significant bit
-    int LSB = digitalRead(limbs[limb].encoderPinB); //LSB = least significant bit
-  
-    int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
-    int sum  = (limbs[limb].lastEncoded << 2) | encoded; //adding it to the previous encoded value
-  
-    if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) limbs[limb].currentPosition++;
-    if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) limbs[limb].currentPosition--;
     
-    limbs[limb].lastEncoded = encoded; //store this value for next time
+    int newMSB = digitalRead(limbs[limb].encoderPinA);
+    int newLSB = digitalRead(limbs[limb].encoderPinB); 
+    
+    if(MSB[limb] != newMSB || LSB[limb] != newLSB){ // so only runs on the rotary encoder that called the interupt
+      
+      MSB = digitalRead(limbs[limb].encoderPinA); 
+      LSB = digitalRead(limbs[limb].encoderPinB); 
+    
+      int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
+      int sum  = (limbs[limb].lastEncoded << 2) | encoded; //adding it to the previous encoded value
+    
+      if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) limbs[limb].currentPosition++;
+      if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) limbs[limb].currentPosition--;
+      
+      limbs[limb].lastEncoded = encoded; //store this value for next time
+      
+    }
+    
   }
-  digitalWrite(13, LOW);
+  
+  if(DEBUG) digitalWrite(13, LOW);
 }

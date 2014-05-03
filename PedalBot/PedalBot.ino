@@ -183,10 +183,10 @@ void encoderMovement(){
     
     if(MSB[limb] != newMSB || LSB[limb] != newLSB){ // so only runs on the rotary encoder that called the interupt
       
-      MSB = digitalRead(limbs[limb].encoderPinA); 
-      LSB = digitalRead(limbs[limb].encoderPinB); 
+      MSB[limb] = newMSB; 
+      LSB[limb] = newLSB; 
     
-      int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
+      int encoded = (newMSB << 1) | newLSB; //converting the 2 pin value to single number
       int sum  = (limbs[limb].lastEncoded << 2) | encoded; //adding it to the previous encoded value
     
       if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) limbs[limb].currentPosition++;

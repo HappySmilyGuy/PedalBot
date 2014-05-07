@@ -7,8 +7,6 @@
 
 class Limb{
   private:
-  
-    // ------ CONSTANTS
     
     // ----- PINS
     byte dirPin, stepPin, sleepPin, led, button, number;

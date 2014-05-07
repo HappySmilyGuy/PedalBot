@@ -112,7 +112,7 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
   
   while(difference < -5 || difference > 5){
     
-    if(difference > 0){ // if keep moving for far too long then CW and ACW are the wrong way round
+    if(difference > 0){
     
       digitalWrite(dirPin, ACW);
     
@@ -147,11 +147,7 @@ void Limb::drive(const int newPosition){ //update to include rotary encoder
 
 
 void Limb::moveToPreset(const byte preset){
-  
-  //ERROR: the presets don't seem to set correctly.
-  
-  flashLED(500);
-    
+        
   int newPosition = presets[preset];
   
   if(newPosition != UNSET){ // if the preset has been set
@@ -208,13 +204,12 @@ void Limb::savePreset(const byte currentPreset){
     writePresetToMemory(currentPreset, currentPosition);
   }
   
-  flashLED(FLASH_SPEED);
-  flashLED(FLASH_SPEED);
+  flashLED(FLASH_SPEED*2);
   
 }
 
 
-// ----- CLEARING FUNCTIONS
+// ----- CLEARING METHODS
 void Limb::clearPresets(){
   
   for(int preset = 0; preset < MAX_PRESETS; preset++){
@@ -265,15 +260,12 @@ inline int currentLocationMemoryLocation(){
 // ----- INITIALISERS
 void Limb::loadPresets(){
   
-    /*for(int preset = 0; preset < MAX_PRESETS; preset++){
+    for(int preset = 0; preset < MAX_PRESETS; preset++){
       presets[preset] = EEPROM.read(presetMemoryLocation(preset));
     }
     
     currentPosition = EEPROM.read(currentLocationMemoryLocation());*/
-    
-    // for debugging purposes
-    for(int preset = 0; preset < MAX_PRESETS; preset++) presets[preset] = NOON; //for display, remove and reset chip.
-    currentPosition = NOON; // also remove  
+
 }
 
 

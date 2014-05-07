@@ -22,11 +22,9 @@ Limb limb2 = Limb(2);
 
 Limb limbs[MAX_LIMBS] = { limb2, limb1 };
 
-//for rotary encoder interupt pins
-int MSB[MAX_LIMBS]; //MSB = most significant bit
-int LSB[MAX_LIMBS]; //LSB = least significant bit
 
 
+// ------------ SETUP ------------ //
 void setup(){
 
   if(DEBUG){
@@ -48,6 +46,8 @@ void setup(){
 }
 
 
+
+// ------------ MAIN LOOP ------------ //
 void loop(){
   
   MIDI.read();
@@ -59,14 +59,12 @@ void loop(){
 
 
 // --------- MIDI FUNCTIONS --------- //
-void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't working, remove 'const'
+void ChangePreset(const byte channel, const byte number) {
   
   if(DEBUG) flashLED(number, 200, 100);
   
-  for(int limb = 0; limb < MAX_LIMBS; limb++){
-    
-    limbs[limb].moveToPreset(number);
-    
+  for(int limb = 0; limb < MAX_LIMBS; limb++){    
+    limbs[limb].moveToPreset(number);    
   }
   
   currentPreset = number;
@@ -75,7 +73,7 @@ void ChangePreset(const byte channel, const byte number) {  //if MIDI isn't work
 
 
 
-// --------- BUTTON CHECKING METHODS --------- //
+// --------- BUTTON FUNCTIONS --------- //
 void checkButtons(){
   //if(digitalRead(CLEAR_ALL) == HIGH) checkClearPresetsButton();
   
@@ -147,6 +145,39 @@ void factoryReset(){ //resests /ALL/ EEPROM memory
 }
 
 
+
+
+// --------- INTERUPT FUNCTION --------- //
+void encoderMovement(){
+  if(DEBUG) digitalWrite(13, HIGH);
+  
+  for(int limb = 0; limb < MAX_LIMBS; limb++){
+    
+    int newMSB = digitalRead(limbs[limb].encoderPinA);
+    int newLSB = digitalRead(limbs[limb].encoderPinB); 
+    
+    if(limbs[limb].lasMSB != limbs.[limb].lastLSB || LSB[limb] != newLSB){ // so only runs on the rotary encoder that called the interupt
+      
+      limbs.[limb].lastMSB = newMSB; 
+      limbs.[limb].lastLSB = newLSB; 
+    
+      int encoded = (newMSB << 1) | newLSB; //converting the 2 pin value to single number
+      int sum  = (limbs[limb].lastEncoded << 2) | encoded; //adding it to the previous encoded value
+    
+      if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) limbs[limb].currentPosition++;
+      if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) limbs[limb].currentPosition--;
+      
+      limbs[limb].lastEncoded = encoded; //store this value for next time
+      
+    }
+    
+  }
+  
+  if(DEBUG) digitalWrite(13, LOW);
+}
+
+
+
 void flashLED(const int time){
   
   digitalWrite(LED, HIGH);
@@ -154,6 +185,7 @@ void flashLED(const int time){
   digitalWrite(LED, LOW);
   
 }
+
 
 
 void flashLED(const int flashes, const int onTime, const int offTime){
@@ -171,32 +203,4 @@ void flashLED(const int flashes, const int onTime, const int offTime){
     digitalWrite(LED, LOW);
   }
   
-}
-
-void encoderMovement(){
-  if(DEBUG) digitalWrite(13, HIGH);
-  
-  for(int limb = 0; limb < MAX_LIMBS; limb++){
-    
-    int newMSB = digitalRead(limbs[limb].encoderPinA);
-    int newLSB = digitalRead(limbs[limb].encoderPinB); 
-    
-    if(MSB[limb] != newMSB || LSB[limb] != newLSB){ // so only runs on the rotary encoder that called the interupt
-      
-      MSB[limb] = newMSB; 
-      LSB[limb] = newLSB; 
-    
-      int encoded = (newMSB << 1) | newLSB; //converting the 2 pin value to single number
-      int sum  = (limbs[limb].lastEncoded << 2) | encoded; //adding it to the previous encoded value
-    
-      if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) limbs[limb].currentPosition++;
-      if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) limbs[limb].currentPosition--;
-      
-      limbs[limb].lastEncoded = encoded; //store this value for next time
-      
-    }
-    
-  }
-  
-  if(DEBUG) digitalWrite(13, LOW);
 }

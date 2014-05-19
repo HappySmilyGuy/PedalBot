@@ -38,6 +38,9 @@ class Limb{
     byte encoderPinB; // because the function needs to be static for the interupt to work
     volatile int lastEncoded;
     byte currentPosition;
+    
+    byte lastMSB;
+    byte lastLSB;
    
     
     // --------- METHODS --------- //

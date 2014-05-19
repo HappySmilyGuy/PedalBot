@@ -1,3 +1,9 @@
+/*
+This Program is made to be run on the Arduino MEGA 2560 v3
+It is made to be run with the Tiny Titan Effects' PedalBot Brain v1.0 and PedalBot Limb v2.4.3
+Last Eddited on 09/05/2014
+Have a great day :)
+*/
 #include <MIDI.h>
 #include <EEPROM.h>
 #include "Limb.h"
@@ -152,20 +158,36 @@ void encoderMovement(){
   if(DEBUG) digitalWrite(13, HIGH);
   
   for(int limb = 0; limb < MAX_LIMBS; limb++){
+   
+    byte newMSB = digitalRead(limbs[limb].encoderPinA);
+    byte newLSB = digitalRead(limbs[limb].encoderPinB); 
     
-    int newMSB = digitalRead(limbs[limb].encoderPinA);
-    int newLSB = digitalRead(limbs[limb].encoderPinB); 
-    
-    if(limbs[limb].lasMSB != limbs.[limb].lastLSB || LSB[limb] != newLSB){ // so only runs on the rotary encoder that called the interupt
+    // algorythm originally taken from http://bildr.org/2012/08/rotary-encoder-arduino/
+    if(limbs[limb].lastMSB != newMSB || limbs[limb].lastLSB != newLSB){ // so only runs on the rotary encoder that called the interupt
       
-      limbs.[limb].lastMSB = newMSB; 
-      limbs.[limb].lastLSB = newLSB; 
+      limbs[limb].lastMSB = newMSB; 
+      limbs[limb].lastLSB = newLSB; 
     
       int encoded = (newMSB << 1) | newLSB; //converting the 2 pin value to single number
       int sum  = (limbs[limb].lastEncoded << 2) | encoded; //adding it to the previous encoded value
-    
-      if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) limbs[limb].currentPosition++;
-      if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) limbs[limb].currentPosition--;
+      
+      switch(sum){
+        
+        case 0b1011:
+        case 0b1101:
+        case 0b0100:
+        case 0b0010:
+          limbs[limb].currentPosition++; //clockwise movement
+          break;
+
+        case 0b0001:
+        case 0b1000:
+        case 0b1110:
+        case 0b0111:
+          limbs[limb].currentPosition--; //anti-clockwise movement
+          break;
+          
+      }
       
       limbs[limb].lastEncoded = encoded; //store this value for next time
       

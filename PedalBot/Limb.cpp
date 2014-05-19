@@ -25,9 +25,11 @@
 
 
 // ----- PINS
-byte dirPin, stepPin, sleepPin, encoderPinA, encoderPinB, led, button, number;
+byte dirPin, stepPin, sleepPin, encoderPinA, encoderPinB, led, button;
+
 
 // ----- STEPPER MOTOR FACTS
+byte number; //which stepper motor it is
 int motorStepsPerRotation;
 
 // all the above variables would be consts but it causes huge amounts of errors, because the arduino can not
@@ -42,8 +44,8 @@ volatile int lastEncoded = 0;
 
 long lastencoderValue = 0;
 
-int lastMSB = 0;
-int lastLSB = 0;
+byte lastMSB = 0;
+byte lastLSB = 0;
 
 
 
@@ -264,7 +266,7 @@ void Limb::loadPresets(){
       presets[preset] = EEPROM.read(presetMemoryLocation(preset));
     }
     
-    currentPosition = EEPROM.read(currentLocationMemoryLocation());*/
+    currentPosition = EEPROM.read(currentLocationMemoryLocation());
 
 }
 
